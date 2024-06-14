@@ -36,7 +36,7 @@ export class UsersController {
   }
 
   @Put()
-  async update(@Body() updateUserDto: UpdateUserDto): Promise<User> {
+  async update(@Body() updateUserDto: UpdateUserDto): Promise<string> {
     return this.userService.update(updateUserDto);
   }
 }

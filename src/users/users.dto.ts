@@ -26,4 +26,8 @@ export class UpdateUserDto {
 
   @IsEmail()
   readonly email: string;
+
+  @IsNumber()
+  @IsOptional()
+  readonly catId?: number;
 }

@@ -27,6 +27,14 @@ export class UserService {
     return user;
   }
   async remove(id: string): Promise<void | string> {
+    const user = await this.usersRepository.findOne({ where: { id: +id } });
+    const cat = await this.catsRepository.findOne({
+      where: { user: { id: user.id } },
+    });
+    if (cat) {
+      this.catsRepository.merge(cat, { ...cat, user: null });
+      this.catsRepository.save(cat);
+    }
     const result = await this.usersRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`User with id ${id} not found`);
@@ -37,7 +45,6 @@ export class UserService {
 
   async create(createUserDto: CreateUserDto): Promise<string> {
     if (createUserDto.catId) {
-      // const user = await this.usersRepository.findOneBy({ id: createUserDto.catId });
       const cat = await this.catsRepository.findOne({
         where: { id: createUserDto.catId },
         relations: ['user'],
@@ -46,8 +53,8 @@ export class UserService {
         if (!cat.user) {
           const newUser = this.usersRepository.create(createUserDto);
           const savedUser = await this.usersRepository.save(newUser);
-          console.log(savedUser);
           this.catsRepository.merge(cat, { ...cat, user: savedUser });
+          this.catsRepository.save(cat);
           return 'Create user successfully with cat';
         } else {
           throw new NotFoundException(`this cat has owner already`);
@@ -63,12 +70,31 @@ export class UserService {
     }
   }
 
-  async update(updateUserDto: UpdateUserDto): Promise<User> {
+  async update(updateUserDto: UpdateUserDto): Promise<string> {
     const user = await this.usersRepository.findOneBy({ id: updateUserDto.id });
     if (!user) {
       throw new NotFoundException(`User with id ${updateUserDto.id} not found`);
     }
-    this.usersRepository.merge(user, updateUserDto);
-    return this.usersRepository.save(user);
+    if (updateUserDto.catId) {
+      const cat = await this.catsRepository.findOne({
+        where: { id: updateUserDto.catId },
+        relations: ['user'],
+      });
+      if (cat) {
+        this.usersRepository.merge(user, updateUserDto);
+        this.usersRepository.save(user);
+        this.catsRepository.merge(cat, { ...cat, user: user });
+        this.catsRepository.save(cat);
+        return 'Update user successfully with cat';
+      } else {
+        throw new NotFoundException(
+          `Cat with id ${updateUserDto.catId} not found`,
+        );
+      }
+    } else {
+      this.usersRepository.merge(user, updateUserDto);
+      this.usersRepository.save(user);
+      return 'Update user successfully';
+    }
   }
 }
